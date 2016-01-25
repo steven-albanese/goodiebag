@@ -3,10 +3,10 @@
 keeping track of relevant targeted kinase inhibitors
 
 includes: 
-list of approved inhibitors (27 as of 20May2015);
-file containing smiles strings;
-select inhibitors still in trials;
-images of structures;
-simlinks between kinases and approved inhibitors
+* list of approved inhibitors (31 as of 25Jan2016);
+* file containing smiles strings;
+* select inhibitors still in trials;
+* images of structures;
+* simlinks between kinases and approved inhibitors
 
 
