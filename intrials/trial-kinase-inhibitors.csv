@@ -1,4 +1,6 @@
-Abemaciclib,CCN1CCN(CC1)Cc2ccc(nc2)Nc3ncc(c(n3)c4cc5c(c(c4)F)nc(n5C(C)C)C)F
-Alisertib,COc1cccc(c1C2=NCc3cnc(nc3-c4c2cc(cc4)Cl)Nc5ccc(c(c5)OC)C(=O)O)F
-AEE788,CCN1CCN(CC1)CC2=CC=C(C=C2)C3=CC4=C(N3)N=CN=C4N[C@H](C)C5=CC=CC=C5
-Danusertib,CN1CCN(CC1)C2=CC=C(C=C2)C(=O)NC3=NNC4=C3CN(C4)C(=O)C(C5=CC=CC=C5)OC
+Abemaciclib,CCN1CCN(CC1)Cc2ccc(nc2)Nc3ncc(c(n3)c4cc5c(c(c4)F)nc(n5C(C)C)C)F[CDK4,CDK6]
+Afuresertib,Cn1c(c(cn1)Cl)c2cc(sc2Cl)C(=O)N[C@@H](Cc3cccc(c3)F)CN,[AKT]
+Alisertib,COc1cccc(c1C2=NCc3cnc(nc3-c4c2cc(cc4)Cl)Nc5ccc(c(c5)OC)C(=O)O)F,[Aurora A]
+AEE788,CCN1CCN(CC1)CC2=CC=C(C=C2)C3=CC4=C(N3)N=CN=C4N[C@H](C)C5=CC=CC=C5,[EGFR,HER2]
+Danusertib,CN1CCN(CC1)C2=CC=C(C=C2)C(=O)NC3=NNC4=C3CN(C4)C(=O)C(C5=CC=CC=C5)OC,[Aurora A]
+
