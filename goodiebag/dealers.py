@@ -42,8 +42,7 @@ class Dealer(object):
         csv_files : list of filenames
     """
     def __init__(self, csv_files):
-        self.inhibitor_smiles = dict()
-        self.inhibitors = list()
+        self._inhibitors = dict()
         self._kinases = dict()
         for csv_file in csv_files:
             self.import_csv(csv_file)
@@ -54,6 +53,9 @@ class Dealer(object):
         mol_smiles = self.inhibitor_smiles[drug_name]
         return generate_OE_molecule(mol_smiles)
 
+    def generate_kinase_xml(self):
+        pass
+
     def import_csv(self, csv_file, drug_status=None):
         with open(csv_file, 'r') as csvi:
             inhibitor_reader = csv.reader(csvi)
@@ -61,14 +63,13 @@ class Dealer(object):
                 drug_name = inhibitor_line[0]
                 smiles = inhibitor_line[1]
                 kinase_list = inhibitor_line[2].split(' ')
-                self.inhibitor_smiles[drug_name] = smiles
                 self.add_inhibitor(drug_name, smiles, kinase_list,
                                    drug_status=drug_status)
 
     def add_inhibitor(self, drug_name, smiles, kinase_list, drug_status=None):
         inhibitor = Inhibitor(drug_name, smiles, kinase_list, self,
                               drug_status=drug_status)
-        self.inhibitors.append(inhibitor)
+        self.inhibitors[inhibitor.name] = inhibitor
 
     def add_kinase(self, kinase_name):
         kinase = Kinase(kinase_name, self)
@@ -88,7 +89,19 @@ class Dealer(object):
 
     @property
     def inhibitor_names(self):
-        return [inhibitor.name for inhibitor in self.inhibitors]
+        return self._inhibitors.keys()
+
+    @property
+    def inhibitors(self):
+        return self._inhibitors.values()
+
+    @property
+    def inhibitor_by_name(self, name):
+        return self._inhibitors[name]
+
+    @property
+    def inhibitor_smiles(self, name):
+        return self._inhibitors[name].smiles
 
 class AllKnownOEMolGenerator(Dealer):
     def __init__(self):
