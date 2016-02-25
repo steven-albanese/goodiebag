@@ -1,0 +1,63 @@
+<Kinases>
+    <Kinase name="ABL">
+        <Inhibitor name="bosutinib" status="approved"/>
+        <Inhibitor name="dasatinib" status="approved"/>
+        <Inhibitor name="imatinib" status="approved"/>
+        <Inhibitor name="nilotinib" status="approved"/>
+        <Inhibitor name="ponatinib" status="approved"/>
+    </Kinase>
+    <Kinase name="ALK">
+        <Inhibitor name="alectinib" status="approved"/>
+        <Inhibitor name="ceritinib" status="approved"/>
+        <Inhibitor name="crizotinib" status="approved"/>
+    </Kinase>
+    <Kinase name="Aurora A">
+        <Inhibitor name="alisertib" status="trial"/>
+        <Inhibitor name="danusertib" status="trial"/>
+    </Kinase>
+    <Kinase name="BRAF">
+        <Inhibitor name="cobimetinib" status="approved"/>
+        <Inhibitor name="dabrafenib" status="approved"/>
+        <Inhibitor name="vemurafenib" status="approved"/>
+    </Kinase>
+    <Kinase name="BTK">
+        <Inhibitor name="ibrutinib" status="approved"/>
+    </Kinase>
+    <Kinase name="CDK">
+        <Inhibitor name="palbociclib" status="approved"/>
+    </Kinase>
+    <Kinase name="EGFR">
+        <Inhibitor name="AEE788" status="trial"/>
+        <Inhibitor name="afatinib" status="approved"/>
+        <Inhibitor name="erlotinib" status="approved"/>
+        <Inhibitor name="gefitinib" status="approved"/>
+        <Inhibitor name="nintedanib" status="approved"/>
+        <Inhibitor name="osimertinib" status="approved"/>
+    </Kinase>
+    <Kinase name="HER2">
+        <Inhibitor name="lapatinib" status="approved"/>
+    </Kinase>
+    <Kinase name="JAK">
+        <Inhibitor name="ruxolitinib" status="approved"/>
+        <Inhibitor name="tofacitinib" status="approved"/>
+    </Kinase>
+    <Kinase name="MEK">
+        <Inhibitor name="trametinib" status="approved"/>
+    </Kinase>
+    <Kinase name="MET">
+        <Inhibitor name="cabozantinib" status="approved"/>
+        <Inhibitor name="crizotinib" status="approved"/>
+    </Kinase>
+    <Kinase name="PI3K">
+        <Inhibitor name="idelalisib" status="approved"/>
+    </Kinase>
+    <Kinase name="VEGFR">
+        <Inhibitor name="axitinib" status="approved"/>
+        <Inhibitor name="lenvatinib" status="approved"/>
+        <Inhibitor name="pazopanib" status="approved"/>
+        <Inhibitor name="regorafenib" status="approved"/>
+        <Inhibitor name="sorafenib" status="approved"/>
+        <Inhibitor name="sunitinib" status="approved"/>
+        <Inhibitor name="vandetanib" status="approved"/>
+    </Kinase>
+</Kinases>
