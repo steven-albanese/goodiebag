@@ -54,6 +54,7 @@ class Dealer(object):
         return generate_OE_molecule(mol_smiles)
 
     def generate_kinase_xml(self):
+        from lxml import etree
         pass
 
     def import_csv(self, csv_file, drug_status=None):
