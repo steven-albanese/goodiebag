@@ -1,5 +1,3 @@
-import csv
-
 def generate_OE_molecule(mol_smiles):
     """
     Generate an oemol with a geometry
@@ -18,19 +16,14 @@ def generate_OE_molecule(mol_smiles):
     return mol
 
 def generate_OE_molecule_from_name(inhibitor_name):
-    from approved import clinical-kinase-inhibitors.csv
-    from intrials import trial-kinase-inhibitors.csv
-    with open('clinical-kinase-inhibitors.csv','r') as csv1:
-        csv1_reader = csv.reader(csv1)
-        for inhibitor_line in csv1_reader:
-            if inhibitor_name in inhibitor_line:
-                return generate_OE_molecule(inhibitor_line[1])
-    with open('trial-kinase-inhibitors.csv','r') as csv2:
-        csv2_reader = csv.reader(csv2)
-        for inhibitor_line in csv2_reader:
-            if inhibitor_name in inhibitor_line:
-                return generate_OE_molecule(inhibitor_line[1])
-    return EOFError('Inhibitor name %s was not recognized' % inhibitor_name)
+    from approved import clinical
+    from intrials import trial
+    smiles = clinical.return_smiles(inhibitor_name)
+    if not smiles:
+        smiles = trial.return_smiles(inhibitor_name)
+    if not smiles:
+        return EOFError('Inhibitor name %s was not recognized' % inhibitor_name)
+    return generate_OE_molecule(smiles)
 
 class Dealer(object):
     """
