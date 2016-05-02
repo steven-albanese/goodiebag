@@ -1,9 +1,9 @@
 # Implemented by SKA, Chodera Lab
-# Last edited: 4/29/16
+# Last edited: 5/2/16
 # TO DO: If we ever publish something with this script, check how to cite PyPDB, the query and search functions
 #        are based on (but very much altered from) the code in that repo
 
-###################################################
+##################################################
 import csv
 import argparse
 import xmltodict
@@ -17,12 +17,30 @@ import os
 
 parser = argparse.ArgumentParser(description="Automated script to search PDB by chemical ID")
 parser.add_argument('-l', required=True, dest='lig', help='The ligand that you want all PDBS for')
-parser.add_argument('-m', required=False, default='LigAndTarget', dest='mode', help='What mode query would you like to make')
+
+parser.add_argument('--mode', required=False, default='LigAndTarget', dest='mode',
+                    help='What mode query would you like to make')
+
+parser.add_argument('--fix', required=False, action='store_true', dest='fix',
+                    help='Setting flag fixes problems with the PDB')
+
+parser.add_argument('--apo', required=False, action='store_true', dest='apo',
+                    help='Remove heterogens, set --cwater to keep crystal waters')
+
+parser.add_argument('--cwater', required=False, action='store_true', dest='cwater',
+                    help='Set flag to keep crystal waters when using --apo')
+
+parser.add_argument('--ph', required=False, default=7.0, type=int, dest='ph',
+                    help='Use to set pH to something other than 7.0')
+
 args = parser.parse_args()
 
 ligand = args.lig
 query_mode = args.mode
-
+fix = args.fix
+apo = args.apo
+keep_cwater = args.cwater
+ph = args.ph
 
 #########################################
 #        Helper Functions               #
@@ -77,6 +95,7 @@ def gen_query(search_ligand, search_protein=None, querymode=query_mode):
 
     return final_params
 
+
 def search(scan_params):
     """Converts a dict() into an XML query to send to the RCSB search url. Returns a list of PDBS that needs to be
     cleaned by clean_pdb function
@@ -118,34 +137,69 @@ def clean_pdb(list_pdb_ids, querymode=query_mode):
     if querymode == 'Lig':
         list_pdb_ids = list_pdb_ids.split('\\n')
         list_pdb_ids[0] = list_pdb_ids[0][-4:]
-        kk = list_pdb_ids.pop(-1)
+        popout = list_pdb_ids.pop(-1)
 
     if querymode == 'LigAndTarget':
         list_pdb_ids = list_pdb_ids.split('\\n')
         list_pdb_ids[0] = list_pdb_ids[0][2:]
-        kk = list_pdb_ids.pop(-1)
+        popout = list_pdb_ids.pop(-1)
         for i,entry in enumerate(list_pdb_ids):
             list_pdb_ids[i] = list_pdb_ids[i][:4]
-
 
     return list_pdb_ids
 
 
-def download_pdb(pdbid, target=None):
+def pdb_fix(pdbid, file_pathway, ph):
+    """
 
-    if target == None:
-        pathway = 'pdbs/%s' % args.lig
-        if not os.path.exists(pathway):
-            os.makedirs(pathway)
-        fixer = PDBFixer(pdbid=pdbid)
-        PDBFile.writeFile(fixer.topology, fixer.positions, open('pdbs/%s/%s.pdb' % (args.lig, pdbid), 'w'))
+    Args:
+        pdbid: 4 letter string specifying the PDB ID of the file yoou want to fix
+        file_pathway: a string containing the pathway specifying how you want to organize the PDB files once written
+        ph: the pH at which hydrogens will be determined and added
 
-    else:
-        pathway = 'pdbs/%s-%s' % (args.lig, target)
-        if not os.path.exists(pathway):
-            os.makedirs(pathway)
-        fixer = PDBFixer(pdbid=pdbid)
-        PDBFile.writeFile(fixer.topology, fixer.positions, open('pdbs/%s-%s/%s.pdb' % (args.lig, target, pdbid), 'w'))
+    Returns: nothing, but it does right PDB files
+
+    """
+
+    fixer = PDBFixer(pdbid=pdbid)
+    numchains = len(list(fixer.topology.chains()))
+    fixer.removeChains(range(1, numchains))
+    fixer.findMissingResidues()
+    fixer.findNonstandardResidues()
+    fixer.replaceNonstandardResidues()
+    fixer.findMissingAtoms()
+    fixer.addMissingAtoms()
+    fixer.addMissingHydrogens(ph)
+    PDBFile.writeFile(fixer.topology, fixer.positions, open(os.path.join(file_pathway, '%s_fixed_ph%s.pdb' % (pdbid, ph)), 'w'))
+    if apo is True:
+        fixer.removeHeterogens(keep_cwater)
+        if keep_cwater is False:
+            PDBFile.writeFile(fixer.topology, fixer.positions, open(os.path.join(file_pathway,
+                                                                                 '%s_fixed_ph%s_apo_nowater.pdb' % (pdbid, ph)), 'w'))
+        else:
+            PDBFile.writeFile(fixer.topology, fixer.positions, open(os.path.join(file_pathway,
+                                                                                 '%s_fixed_ph%s_apo.pdb' % (pdbid, ph)), 'w'))
+
+
+def download_pdb(pdbid, file_pathway):
+    """
+
+    Args:
+        pdbid: 4 letter string specifying the PDB ID of the file yoou want to fix
+        file_pathway: a string containing the pathway specifying how you want to organize the PDB files once written
+
+    Returns: nothing, but it does write the PDB file
+
+    ***Note: this function does NOT fix any mistakes with the PDB file
+
+    """
+
+    if not os.path.exists(file_pathway):
+        os.makedirs(file_pathway)
+    fixer = PDBFixer(pdbid=pdbid)
+    PDBFile.writeFile(fixer.topology, fixer.positions, open(os.path.join(file_pathway, '%s.pdb' % pdbid), 'w'))
+
+
 
 if __name__ == '__main__':
 
@@ -157,7 +211,6 @@ if __name__ == '__main__':
     for row in reader:
         for column, value in row.items():
             inhibitor_dict.setdefault(column, []).append(value)
-
     # Create list of Chem_IDs for the FDA-Approved drug name from CSV file
     chem_ids = inhibitor_dict['Chem_ID'][inhibitor_dict['inhibitor'].index(ligand)]
     chem_id_list = chem_ids.split()
@@ -167,6 +220,7 @@ if __name__ == '__main__':
     # Query mode Lig searches for all PDBs with a given FDA-approved kinase inhibitors in them
     if query_mode == 'Lig':
         pdb_list = []
+        pathway = pathway = 'pdbs/%s' % args.lig
         for id in chem_id_list:
             print('Searching for PDBS containing %s' % id)
             query = gen_query(search_ligand=id)
@@ -175,7 +229,9 @@ if __name__ == '__main__':
             if len(found_pdb) > 0:
                 print('found %s PDBS for %s' % (len(found_pdb), id))
                 for s in found_pdb:
-                    download_pdb(s)
+                    download_pdb(s, pathway)
+                    if args.fix == True:
+                        pdb_fix(s, pathway, ph=ph)
             else:
                 print('found %s pdb files for %s. Check the CSV file for a mistake' % (len(found_pdb), id))
 
@@ -190,20 +246,21 @@ if __name__ == '__main__':
         for i, ac_id in enumerate(accessions_list):
             print('(%s)  %s: %s' % (i+1, targets_list[i], ac_id))
             for id in chem_id_list:
-                print('Searching for PDBS containing %s and %s' % (id, targets_list[i]))
+                print('Searching for PDBs containing %s and %s' % (id, targets_list[i]))
                 query = gen_query(search_ligand=id, search_protein=ac_id)
                 found_pdb = search(query)
                 found_pdb = clean_pdb(found_pdb)
                 if len(found_pdb) > 0:
-                    print('found %s PDBS for %s/%s' % (len(found_pdb), id, targets_list[i]))
-                    print(str(found_pdb) + " contain %s and %s" % (args.lig, targets_list[i]))
+                    print('found %s PDB(s) for %s/%s' % (len(found_pdb), id, targets_list[i]))
                     for s in found_pdb:
-                        download_pdb(s, targets_list[i])
+                        pathway = 'pdbs/%s-%s' % (args.lig, targets_list[i])
+                        download_pdb(s, pathway)
+                        if args.fix == True:
+                            pdb_fix(s, pathway, ph=ph)
                 else:
                     print('found %s pdb files for %s/%s. Check the CSV file for a mistake' % (len(found_pdb),
                                                                                               targets_list[i], id))
 
-    # Will now check to see if any PDBs were found and download them
 
 
 
