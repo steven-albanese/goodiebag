@@ -46,6 +46,7 @@ ph = args.ph
 #        Helper Functions               #
 #########################################
 
+
 def gen_query(search_ligand, search_protein=None, querymode=query_mode):
     """
     Args:
@@ -89,9 +90,6 @@ def gen_query(search_ligand, search_protein=None, querymode=query_mode):
         """ % (search_protein, search_ligand)
 
         final_params = xmltodict.parse(xml)
-
-    else:
-        print('Invalid query mode, use either Lig or LigAndTarget')
 
     return final_params
 
@@ -200,7 +198,6 @@ def download_pdb(pdbid, file_pathway):
     PDBFile.writeFile(fixer.topology, fixer.positions, open(os.path.join(file_pathway, '%s.pdb' % pdbid), 'w'))
 
 
-
 if __name__ == '__main__':
 
     # Open and read csv file containing list of approved inhibitors and targets
@@ -260,6 +257,9 @@ if __name__ == '__main__':
                 else:
                     print('found %s pdb files for %s/%s. Check the CSV file for a mistake' % (len(found_pdb),
                                                                                               targets_list[i], id))
+
+    else:
+        warnings.warn("I think you specified a search mode that isn't supported yet! Check --mode if you used it.")
 
 
 
