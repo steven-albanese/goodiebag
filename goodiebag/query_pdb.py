@@ -30,7 +30,7 @@ parser.add_argument('--apo', required=False, action='store_true', dest='apo',
 parser.add_argument('--cwater', required=False, action='store_true', dest='cwater',
                     help='Set flag to keep crystal waters when using --apo')
 
-parser.add_argument('--ph', required=False, default=7.0, type=int, dest='ph',
+parser.add_argument('--ph', required=False, default=7.4, type=int, dest='ph',
                     help='Use to set pH to something other than 7.0')
 
 args = parser.parse_args()
@@ -58,7 +58,6 @@ def gen_query(search_ligand, search_protein=None, querymode=query_mode):
 
     """
 
-
     if querymode == 'Lig':
         params = dict()
         params['queryType'] = 'org.pdb.query.simple.ChemCompIdQuery'
@@ -68,7 +67,7 @@ def gen_query(search_ligand, search_protein=None, querymode=query_mode):
         scan_params['orgPdbQuery'] = params
         final_params = scan_params
 
-    elif querymode == 'LigAndTarget':
+    else:
         xml = """
         <orgPdbCompositeQuery>
          <queryRefinement>
@@ -137,7 +136,7 @@ def clean_pdb(list_pdb_ids, querymode=query_mode):
         list_pdb_ids[0] = list_pdb_ids[0][-4:]
         popout = list_pdb_ids.pop(-1)
 
-    if querymode == 'LigAndTarget':
+    else:
         list_pdb_ids = list_pdb_ids.split('\\n')
         list_pdb_ids[0] = list_pdb_ids[0][2:]
         popout = list_pdb_ids.pop(-1)
@@ -147,24 +146,24 @@ def clean_pdb(list_pdb_ids, querymode=query_mode):
     return list_pdb_ids
 
 
-def pdb_fix(pdbid, file_pathway, ph):
+def pdb_fix(pdbid, file_pathway, ph, chains_to_remove):
     """
 
     Args:
         pdbid: 4 letter string specifying the PDB ID of the file yoou want to fix
         file_pathway: a string containing the pathway specifying how you want to organize the PDB files once written
         ph: the pH at which hydrogens will be determined and added
-
+        chains_to_remove: dictionary containing pdbs with chains to remove
     Returns: nothing, but it does right PDB files
 
     """
-
+    print(pdbid)
     fixer = PDBFixer(pdbid=pdbid)
-    numchains = len(list(fixer.topology.chains()))
-    fixer.removeChains(range(1, numchains))
+    if pdbid in chains_to_remove['pdbid']:
+        chains = chains_to_remove['chain_to_remove'][curated_chains['pdbid'].index(pdbid)]
+        chains_list = chains.split()
+        fixer.removeChains(chainIds=chains_list)
     fixer.findMissingResidues()
-    fixer.findNonstandardResidues()
-    fixer.replaceNonstandardResidues()
     fixer.findMissingAtoms()
     fixer.addMissingAtoms()
     fixer.addMissingHydrogens(ph)
@@ -214,6 +213,15 @@ if __name__ == '__main__':
     if chem_id_list == 0:
         print('Missing ChemID for %s, there are a few of these' % ligand)
 
+    # Create a dictionary containing the curated PDBs that must have chains removed
+    filename_curated_chains = 'remove_chains.csv'
+    reader2 = csv.DictReader(open(filename_curated_chains))
+    curated_chains = {}
+
+    for row in reader2:
+        for column, value in row.items():
+            curated_chains.setdefault(column, []).append(value)
+
     # Query mode Lig searches for all PDBs with a given FDA-approved kinase inhibitors in them
     if query_mode == 'Lig':
         pdb_list = []
@@ -227,8 +235,8 @@ if __name__ == '__main__':
                 print('found %s PDBS for %s' % (len(found_pdb), id))
                 for s in found_pdb:
                     download_pdb(s, pathway)
-                    if args.fix == True:
-                        pdb_fix(s, pathway, ph=ph)
+                    if fix is True:
+                        pdb_fix(s, pathway, ph, curated_chains)
             else:
                 print('found %s pdb files for %s. Check the CSV file for a mistake' % (len(found_pdb), id))
 
@@ -252,12 +260,40 @@ if __name__ == '__main__':
                     for s in found_pdb:
                         pathway = 'pdbs/%s-%s' % (args.lig, targets_list[i])
                         download_pdb(s, pathway)
-                        if args.fix == True:
-                            pdb_fix(s, pathway, ph=ph)
+                        if fix is True:
+                            pdb_fix(s, pathway, ph, curated_chains)
                 else:
                     print('found %s pdb files for %s/%s. Check the CSV file for a mistake' % (len(found_pdb),
                                                                                               targets_list[i], id))
-
+    elif query_mode == 'LigAll':
+        pdb_list = []
+        for x in inhibitor_dict['inhibitor']:
+            chem_ids = inhibitor_dict['Chem_ID'][inhibitor_dict['inhibitor'].index(x)]
+            chem_id_list = chem_ids.split()
+            if chem_id_list == 0:
+                print('Missing ChemID for %s, there are a few of these' % x)
+            accessions = inhibitor_dict['Accession_ID'][inhibitor_dict['inhibitor'].index(x)]
+            accessions_list = accessions.split()
+            targets = inhibitor_dict['approved_target'][inhibitor_dict['inhibitor'].index(x)]
+            targets_list = targets.split()
+            print('The FDA approved targets for %s are:' % x)
+            for i, ac_id in enumerate(accessions_list):
+                print('(%s)  %s: %s' % (i + 1, targets_list[i], ac_id))
+                for id in chem_id_list:
+                    print('Searching for PDBs containing %s and %s' % (id, targets_list[i]))
+                    query = gen_query(search_ligand=id, search_protein=ac_id)
+                    found_pdb = search(query)
+                    found_pdb = clean_pdb(found_pdb)
+                    if len(found_pdb) > 0:
+                        print('found %s PDB(s) for %s/%s' % (len(found_pdb), id, targets_list[i]))
+                        for s in found_pdb:
+                            pathway = 'pdbs/%s-%s' % (x, targets_list[i])
+                            download_pdb(s, pathway)
+                            if fix is True:
+                                pdb_fix(s, pathway, ph, curated_chains)
+                    else:
+                        print('found %s pdb files for %s/%s. Check the CSV file for a mistake' % (len(found_pdb),
+                                                                                                  targets_list[i], id))
     else:
         warnings.warn("I think you specified a search mode that isn't supported yet! Check --mode if you used it.")
 
