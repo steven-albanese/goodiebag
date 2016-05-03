@@ -164,6 +164,8 @@ def pdb_fix(pdbid, file_pathway, ph, chains_to_remove):
         chains_list = chains.split()
         fixer.removeChains(chainIds=chains_list)
     fixer.findMissingResidues()
+    fixer.findNonstandardResidues()
+    fixer.replaceNonstandardResidues()
     fixer.findMissingAtoms()
     fixer.addMissingAtoms()
     fixer.addMissingHydrogens(ph)
