@@ -13,6 +13,7 @@ import warnings
 from pdbfixer import PDBFixer
 from simtk.openmm.app import PDBFile
 import os
+from natsort import natsorted
 #################################################
 
 parser = argparse.ArgumentParser(description="Automated script to search PDB by chemical ID")
@@ -158,12 +159,32 @@ def pdb_fix(pdbid, file_pathway, ph, chains_to_remove):
 
     """
     print(pdbid)
+
+    # Download the topology from rcsb based on pdbod
     fixer = PDBFixer(pdbid=pdbid)
+
+    # Remove chains based on hand curated .csv file
     if pdbid in chains_to_remove['pdbid']:
         chains = chains_to_remove['chain_to_remove'][curated_chains['pdbid'].index(pdbid)]
         chains_list = chains.split()
         fixer.removeChains(chainIds=chains_list)
+
+    # Determine the first and last residue resolved in chain 0
+    chains = [chain for chain in fixer.topology.chains()]
+    resindices = [residue.index for residue in chains[0].residues()]
+    resindices = natsorted(resindices)
+    first_resindex = resindices[0]
+    last_resindex = resindices[-1]
+
+    # Find Missing residues and determine if they are C or N terminal fragments (which will be removed)
+
     fixer.findMissingResidues()
+    if sorted(fixer.missingResidues.keys())[0][-1] <= first_resindex:
+        fixer.missingResidues.pop((sorted(fixer.missingResidues.keys())[0]))
+
+    if sorted(fixer.missingResidues.keys())[-1][-1] >= last_resindex:
+        fixer.missingResidues.pop((sorted(fixer.missingResidues.keys())[-1]))
+
     fixer.findNonstandardResidues()
     fixer.replaceNonstandardResidues()
     fixer.findMissingAtoms()
