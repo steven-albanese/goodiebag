@@ -179,18 +179,20 @@ def pdb_fix(pdbid, file_pathway, ph, chains_to_remove):
     # Find Missing residues and determine if they are C or N terminal fragments (which will be removed)
 
     fixer.findMissingResidues()
-    if sorted(fixer.missingResidues.keys())[0][-1] <= first_resindex:
-        fixer.missingResidues.pop((sorted(fixer.missingResidues.keys())[0]))
+    if len(fixer.missingResidues) >0:
+        if sorted(fixer.missingResidues.keys())[0][-1] <= first_resindex:
+            fixer.missingResidues.pop((sorted(fixer.missingResidues.keys())[0]))
 
-    if sorted(fixer.missingResidues.keys())[-1][-1] >= last_resindex:
-        fixer.missingResidues.pop((sorted(fixer.missingResidues.keys())[-1]))
+        if sorted(fixer.missingResidues.keys())[-1][-1] >= last_resindex:
+            fixer.missingResidues.pop((sorted(fixer.missingResidues.keys())[-1]))
 
     fixer.findNonstandardResidues()
     fixer.replaceNonstandardResidues()
     fixer.findMissingAtoms()
     fixer.addMissingAtoms()
     fixer.addMissingHydrogens(ph)
-    PDBFile.writeFile(fixer.topology, fixer.positions, open(os.path.join(file_pathway, '%s_fixed_ph%s.pdb' % (pdbid, ph)), 'w'))
+    PDBFile.writeFile(fixer.topology, fixer.positions, open(os.path.join(file_pathway,
+                                                                         '%s_fixed_ph%s.pdb' % (pdbid, ph)), 'w'))
     if apo is True:
         fixer.removeHeterogens(keep_cwater)
         if keep_cwater is False:
