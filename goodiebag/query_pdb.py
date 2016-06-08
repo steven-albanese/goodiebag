@@ -224,14 +224,19 @@ def download_pdb(pdbid, file_pathway):
 
 if __name__ == '__main__':
 
+    # Assert that query_mode is an implemented search typ
+    assert query_mode in {'Lig', 'LigAndTarget', 'LigAll', 'Uniprot'}
+
     # Open and read csv file containing list of approved inhibitors and targets
     filename = 'approved/clinical-kinase-inhibitors.csv'
     reader = csv.DictReader(open(filename))
     inhibitor_dict = {}
 
+
     for row in reader:
         for column, value in row.items():
             inhibitor_dict.setdefault(column, []).append(value)
+
     # Create list of Chem_IDs for the FDA-Approved drug name from CSV file
     chem_ids = inhibitor_dict['Chem_ID'][inhibitor_dict['inhibitor'].index(ligand)]
     chem_id_list = chem_ids.split()
@@ -273,13 +278,13 @@ if __name__ == '__main__':
         targets = inhibitor_dict['approved_target'][inhibitor_dict['inhibitor'].index(ligand)]
         targets_list = targets.split()
         print('The FDA approved targets for %s are:' % args.lig)
-        for i, ac_id in enumerate(accessions_list):
+        for i, ac_id in enumerate(accessions_list): # loop through all of the ids in the human target list
             print('(%s)  %s: %s' % (i+1, targets_list[i], ac_id))
-            for id in chem_id_list:
+            for id in chem_id_list: # Loop through all of the chem_ids for a given ligand
                 print('Searching for PDBs containing %s and %s' % (id, targets_list[i]))
-                query = gen_query(search_ligand=id, search_protein=ac_id)
-                found_pdb = search(query)
-                found_pdb = clean_pdb(found_pdb)
+                query = gen_query(search_ligand=id, search_protein=ac_id)  # Generates and returns a dict() for queyring RCSB
+                found_pdb = search(query) # Converts dict() to XML and query's PDB. Returns string with PDBIDs
+                found_pdb = clean_pdb(found_pdb)  # Cleans up extra characters and returns a list of PDBIDs
                 if len(found_pdb) > 0:
                     print('found %s PDB(s) for %s/%s' % (len(found_pdb), id, targets_list[i]))
                     for s in found_pdb:
@@ -290,6 +295,8 @@ if __name__ == '__main__':
                 else:
                     print('found %s pdb files for %s/%s. Check the CSV file for a mistake' % (len(found_pdb),
                                                                                               targets_list[i], id))
+    # LigAll downloads all ligands and their HUMANS targets
+    # Todo: implement a way to have this download all targets regardless of species
     elif query_mode == 'LigAll':
         pdb_list = []
         for x in inhibitor_dict['inhibitor']:
@@ -319,6 +326,31 @@ if __name__ == '__main__':
                     else:
                         print('found %s pdb files for %s/%s. Check the CSV file for a mistake' % (len(found_pdb),
                                                                                                   targets_list[i], id))
+
+    elif query_mode == 'Accession':
+        pdb_list = []
+        accessions = inhibitor_dict['Uniprot'][inhibitor_dict['inhibitor'].index(ligand)]
+        accessions_list = accessions.split()
+        targets = inhibitor_dict['approved_target'][inhibitor_dict['inhibitor'].index(ligand)]
+        targets_list = targets.split()
+        print('The FDA approved targets for %s are:' % args.lig)
+        for i, ac_id in enumerate(accessions_list):
+            print('(%s)  %s: %s' % (i + 1, targets_list[i], ac_id))
+            for id in chem_id_list:
+                print('Searching for PDBs containing %s and %s' % (id, targets_list[i]))
+                query = gen_query(search_ligand=id, search_protein=ac_id)
+                found_pdb = search(query)
+                found_pdb = clean_pdb(found_pdb)
+                if len(found_pdb) > 0:
+                    print('found %s PDB(s) for %s/%s' % (len(found_pdb), id, targets_list[i]))
+                    for s in found_pdb:
+                        pathway = 'pdbs/%s-%s' % (args.lig, targets_list[i])
+                        download_pdb(s, pathway)
+                        if fix is True:
+                            pdb_fix(s, pathway, ph, curated_chains)
+                else:
+                    print('found %s pdb files for %s/%s. Check the CSV file for a mistake' % (len(found_pdb),
+                                                                                              targets_list[i], id))
     else:
         warnings.warn("I think you specified a search mode that isn't supported yet! Check --mode if you used it.")
 
