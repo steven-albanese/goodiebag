@@ -17,10 +17,11 @@ from natsort import natsorted
 #################################################
 
 parser = argparse.ArgumentParser(description="Automated script to search PDB by chemical ID")
-parser.add_argument('-l', required=True, dest='lig', help='The ligand that you want all PDBS for')
+parser.add_argument('-l', required=False, dest='lig', default='None',
+                    help='The ligand that you want all PDBS for. Specify when using Lig or LigAndTarget modes')
 
-parser.add_argument('--mode', required=False, default='LigAndTarget', dest='mode',
-                    help='What mode query would you like to make')
+parser.add_argument('--mode', required=False, default='LigAll', dest='mode',
+                    help='What mode query would you like to make. Currently implemented modes are Lig, LigAndTarget, LigAll and Apo modes')
 
 parser.add_argument('--fix', required=False, action='store_true', dest='fix',
                     help='Setting flag fixes problems with the PDB')
@@ -67,6 +68,29 @@ def gen_query(search_ligand, search_protein=None, querymode=query_mode):
         scan_params = dict()
         scan_params['orgPdbQuery'] = params
         final_params = scan_params
+
+    if querymode == 'Apo':
+        xml = """
+        <orgPdbCompositeQuery>
+         <queryRefinement>
+          <queryRefinementLevel>0</queryRefinementLevel>
+          <orgPdbQuery>
+             <queryType>org.pdb.query.simple.UpAccessionIdQuery</queryType>
+            <accessionIdList>%s</accessionIdList>
+          </orgPdbQuery>
+         </queryRefinement>
+         <queryRefinement>
+          <queryRefinementLevel>1</queryRefinementLevel>
+          <conjunctionType>and</conjunctionType>
+          <orgPdbQuery>
+            <queryType>org.pdb.query.simple.NoLigandQuery</queryType>
+            <haveLigands>no</haveLigands>
+          </orgPdbQuery>
+         </queryRefinement>
+        </orgPdbCompositeQuery>
+        """"" % (search_protein)
+
+        final_params = xmltodict.parse(xml)
 
     else:
         xml = """
@@ -225,7 +249,7 @@ def download_pdb(pdbid, file_pathway):
 if __name__ == '__main__':
 
     # Assert that query_mode is an implemented search typ
-    assert query_mode in {'Lig', 'LigAndTarget', 'LigAll', 'Uniprot'}
+    assert query_mode in {'Lig', 'LigAndTarget', 'LigAll', 'Apo'}
 
     # Open and read csv file containing list of approved inhibitors and targets
     filename = 'approved/clinical-kinase-inhibitors.csv'
@@ -237,11 +261,6 @@ if __name__ == '__main__':
         for column, value in row.items():
             inhibitor_dict.setdefault(column, []).append(value)
 
-    # Create list of Chem_IDs for the FDA-Approved drug name from CSV file
-    chem_ids = inhibitor_dict['Chem_ID'][inhibitor_dict['inhibitor'].index(ligand)]
-    chem_id_list = chem_ids.split()
-    if chem_id_list == 0:
-        print('Missing ChemID for %s, there are a few of these' % ligand)
 
     # Create a dictionary containing the curated PDBs that must have chains removed
     filename_curated_chains = 'remove_chains.csv'
@@ -254,6 +273,11 @@ if __name__ == '__main__':
 
     # Query mode Lig searches for all PDBs with a given FDA-approved kinase inhibitors in them
     if query_mode == 'Lig':
+        # Create list of Chem_IDs for the FDA-Approved drug name from CSV file
+        chem_ids = inhibitor_dict['Chem_ID'][inhibitor_dict['inhibitor'].index(ligand)]
+        chem_id_list = chem_ids.split()
+        if chem_id_list == 0:
+            print('Missing ChemID for %s, there are a few of these' % ligand)
         pdb_list = []
         pathway = pathway = 'pdbs/%s' % args.lig
         for id in chem_id_list:
@@ -272,6 +296,11 @@ if __name__ == '__main__':
 
     # Query Mode LigAndTarget searches for all inhibitor:approved target PDB files
     elif query_mode == 'LigAndTarget':
+        # Create list of Chem_IDs for the FDA-Approved drug name from CSV file
+        chem_ids = inhibitor_dict['Chem_ID'][inhibitor_dict['inhibitor'].index(ligand)]
+        chem_id_list = chem_ids.split()
+        if chem_id_list == 0:
+            print('Missing ChemID for %s, there are a few of these' % ligand)
         pdb_list = []
         accessions = inhibitor_dict['Accession_ID'][inhibitor_dict['inhibitor'].index(ligand)]
         accessions_list = accessions.split()
@@ -299,6 +328,11 @@ if __name__ == '__main__':
     # Todo: implement a way to have this download all targets regardless of species
     elif query_mode == 'LigAll':
         pdb_list = []
+        # Create list of Chem_IDs for the FDA-Approved drug name from CSV file
+        chem_ids = inhibitor_dict['Chem_ID'][inhibitor_dict['inhibitor'].index(ligand)]
+        chem_id_list = chem_ids.split()
+        if chem_id_list == 0:
+            print('Missing ChemID for %s, there are a few of these' % ligand)
         for x in inhibitor_dict['inhibitor']:
             chem_ids = inhibitor_dict['Chem_ID'][inhibitor_dict['inhibitor'].index(x)]
             chem_id_list = chem_ids.split()
@@ -327,30 +361,29 @@ if __name__ == '__main__':
                         print('found %s pdb files for %s/%s. Check the CSV file for a mistake' % (len(found_pdb),
                                                                                                   targets_list[i], id))
 
-    elif query_mode == 'Accession':
+    elif query_mode == 'Apo':
         pdb_list = []
-        accessions = inhibitor_dict['Uniprot'][inhibitor_dict['inhibitor'].index(ligand)]
-        accessions_list = accessions.split()
-        targets = inhibitor_dict['approved_target'][inhibitor_dict['inhibitor'].index(ligand)]
-        targets_list = targets.split()
-        print('The FDA approved targets for %s are:' % args.lig)
-        for i, ac_id in enumerate(accessions_list):
-            print('(%s)  %s: %s' % (i + 1, targets_list[i], ac_id))
-            for id in chem_id_list:
-                print('Searching for PDBs containing %s and %s' % (id, targets_list[i]))
-                query = gen_query(search_ligand=id, search_protein=ac_id)
-                found_pdb = search(query)
-                found_pdb = clean_pdb(found_pdb)
-                if len(found_pdb) > 0:
-                    print('found %s PDB(s) for %s/%s' % (len(found_pdb), id, targets_list[i]))
-                    for s in found_pdb:
-                        pathway = 'pdbs/%s-%s' % (args.lig, targets_list[i])
-                        download_pdb(s, pathway)
-                        if fix is True:
-                            pdb_fix(s, pathway, ph, curated_chains)
-                else:
-                    print('found %s pdb files for %s/%s. Check the CSV file for a mistake' % (len(found_pdb),
-                                                                                              targets_list[i], id))
+        accessions = inhibitor_dict['Accession_ID']
+        accessions_list = set()
+        for x in range(len(accessions)):
+            newlist = accessions[x].split()
+            for x in newlist:
+                accessions_list.add(x)
+        for ac_id in accessions_list:
+            print('Searching for PDBs containing %s and no ligands' % ac_id)
+            query = gen_query(search_ligand=ligand, search_protein=ac_id)
+            found_pdb = search(query)
+            found_pdb = clean_pdb(found_pdb)
+            if len(found_pdb) > 0:
+                print('found %s PDB(s) for %s' % (len(found_pdb), ac_id))
+                for s in found_pdb:
+                    pathway = 'pdbs/apo'
+                    download_pdb(s, pathway)
+                    if fix is True:
+                        pdb_fix(s, pathway, ph, curated_chains)
+            else:
+                print('found %s pdb files for %s/%s. Check the CSV file for a mistake' % (len(found_pdb),
+                                                                                          targets_list[i], id))
     else:
         warnings.warn("I think you specified a search mode that isn't supported yet! Check --mode if you used it.")
 
